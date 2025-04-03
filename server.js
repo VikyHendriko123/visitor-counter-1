@@ -41,6 +41,6 @@ app.use('/api/auth', authRateLimiter, authRouter);
 app.use('/api/user', userRouter);
 app.use('/api/visitor', visitorRouter);
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
     console.log(`Server started on port ${port}`);
 });
