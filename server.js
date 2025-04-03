@@ -27,7 +27,7 @@ const authRateLimiter = rateLimit({
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: "*", credentials: true }));
+app.use(cors({ origin: ["http://localhost:5000", "http://10.0.2.2:5000", "visitor-counter-production.up.railway.app"], credentials: true }));
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
