@@ -13,7 +13,7 @@ import visitorRouter from "./routes/visitorRoutes.js";
 
 dotenv.config();
 const app = express();
-const port = process.env.EXPRESS_PORT || 5000;
+const port = process.env.PORT || 5000;
 
 connectDB();
 
@@ -33,6 +33,10 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 //API Endpoints
+app.get("/", (req, res) => {
+  res.send("Server is running!");
+});
+
 app.use('/api/auth', authRateLimiter, authRouter);
 app.use('/api/user', userRouter);
 app.use('/api/visitor', visitorRouter);
