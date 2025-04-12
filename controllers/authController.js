@@ -31,7 +31,7 @@ export const login = async (req, res) => {
         }
 
         const token = jwt.sign({id: user._id, email: user.email, username: user.username, location: user.location}, process.env.JWT_SECRET, {expiresIn: '1d'});
-        const refreshToken = jwt.sign({id: user._id}, REFRESH_SECRET, {expiresIn: '7d'});
+        const refreshToken = jwt.sign({id: user._id}, process.env.REFRESH_SECRET, {expiresIn: '7d'});
 
         res.cookie('token', token, {
             httpOnly: true, 
@@ -84,9 +84,9 @@ export const refreshAccessToken = async (req, res) => {
         const { userId } = req.body;
         const user = await userModel.findById(userId);
 
-        const decoded = jwt.verify(refreshToken, REFRESH_SECRET);
+        const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
         const newAccessToken = jwt.sign({id: user._id, email: user.email, username: user.username, location: user.location}, JWT_SECRET, {expiresIn: '1d'});
-        const newRefreshToken = jwt.sign({id: decoded.id}, REFRESH_SECRET, {expiresIn: '7d'});
+        const newRefreshToken = jwt.sign({id: decoded.id}, process.env.REFRESH_SECRET, {expiresIn: '7d'});
 
         res.cookie('token', newAccessToken, {
             httpOnly: true,
