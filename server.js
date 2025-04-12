@@ -15,6 +15,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 5000;
 
+app.set('trust proxy', true);
 connectDB();
 
 const authRateLimiter = rateLimit({

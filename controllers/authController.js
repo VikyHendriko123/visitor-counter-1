@@ -30,13 +30,21 @@ export const login = async (req, res) => {
             return res.status(401).json({success: false, message: 'Incorrect password'});
         }
 
-        const token = jwt.sign({id: user._id, email: user.email, username: user.username, location: user.location}, process.env.JWT_SECRET, {expiresIn: '31d'});
+        const token = jwt.sign({id: user._id, email: user.email, username: user.username, location: user.location}, process.env.JWT_SECRET, {expiresIn: '1d'});
+        const refreshToken = jwt.sign({id: user._id}, REFRESH_SECRET, {expiresIn: '7d'});
 
         res.cookie('token', token, {
             httpOnly: true, 
             secure: process.env.NODE_ENV === 'production', 
             sameSite: 'lax',
-            maxAge: 31 * 24 * 60 * 60 * 1000
+            maxAge: 1 * 24 * 60 * 60 * 1000
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === 'production', 
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
         return res.status(200).json({success: true, message: 'User logged in successfully'});
@@ -52,10 +60,51 @@ export const logout = async (req, res) => {
             secure: process.env.NODE_ENV === 'production', 
             sameSite: 'lax'
         });
+        
+        res.clearCookie('refreshToken', {
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === 'production', 
+            sameSite: 'lax'
+        });
 
         return res.json({success: true, message: 'User logged out successfully'});
     } catch (error) {
         return res.json({success: false, message: error.message});
+    }
+}
+
+export const refreshAccessToken = async (req, res) => {
+    const { refreshToken } = req.cookies;
+
+    if (!refreshToken) {
+        return res.status(401).json({ success: false, message: "Access denied. Please log in again." });
+    }
+
+    try {
+        const { userId } = req.body;
+        const user = await userModel.findById(userId);
+
+        const decoded = jwt.verify(refreshToken, REFRESH_SECRET);
+        const newAccessToken = jwt.sign({id: user._id, email: user.email, username: user.username, location: user.location}, JWT_SECRET, {expiresIn: '1d'});
+        const newRefreshToken = jwt.sign({id: decoded.id}, REFRESH_SECRET, {expiresIn: '7d'});
+
+        res.cookie('token', newAccessToken, {
+            httpOnly: true,
+            secure: NODE_ENV === 'production',
+            sameSite: NODE_ENV === 'production' ? 'none' : 'strict',
+            maxAge: 1 * 24 * 60 * 60 * 1000
+        });
+
+        res.cookie('refreshToken', newRefreshToken, {
+            httpOnly: true,
+            secure: NODE_ENV === 'production',
+            sameSite: NODE_ENV === 'production' ? 'none' : 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
+        return res.json({ success: true, message: "Token refreshed successfully", token: newAccessToken });
+    } catch (error) {
+        return res.status(401).json({ success: false, message: "Invalid or expired token. Login again." });
     }
 }
 
@@ -92,8 +141,11 @@ export const sendVerifyOtp = async (req, res) => {
             await transporter.sendMail(mailOptions);
     
             return res.json({success: true, message: 'Verification code sent to your email'});
+        } else if (deviceData && deviceData.device === deviceFingerprint) {
+            return res.json({success: true, isVerified: true, message: 'Login Successful'});
+        } else {
+            return res.json({success: false, isVerified: false, message: 'failed to send verification code'});
         }
-        return res.json({success: false, message: 'User already verified'});
     } catch (error) {
         return res.json({success: false, message: error.message});
     }
@@ -138,7 +190,30 @@ export const verifyEmail = async (req, res) => {
 
 export const isAuthenticated = async (req, res) => {
     try {
-        return res.json({success: true, message: 'User already authenticated'})
+        const {userId} = req.body;
+        const user = await userModel.findById(userId);
+
+        const userAgent = req.headers["user-agent"];
+        const ip = req.ip;
+        const deviceHMAC = generateHMAC(userAgent, ip, userId);
+
+        if (user && user.verifiedDevices.get(deviceHMAC) && user.verifiedDevices.get(deviceHMAC).isVerified) {
+            return res.json({success: true, message: 'User already authenticated'});
+        } else {
+            res.clearCookie('token', {
+                httpOnly: true, 
+                secure: NODE_ENV === 'production', 
+                sameSite: NODE_ENV === 'production' ? 'none' : 'strict'
+            });
+    
+            res.clearCookie('refreshToken', {
+                httpOnly: true, 
+                secure: NODE_ENV === 'production', 
+                sameSite: NODE_ENV === 'production' ? 'none' : 'strict'
+            });
+
+            return res.json({success: false, message: 'User not authenticated. Please login again'});
+        }
     } catch (error) {
         return res.json({success: false, message: error.message});
     }
