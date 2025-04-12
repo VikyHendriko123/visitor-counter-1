@@ -90,15 +90,15 @@ export const refreshAccessToken = async (req, res) => {
 
         res.cookie('token', newAccessToken, {
             httpOnly: true,
-            secure: NODE_ENV === 'production',
-            sameSite: NODE_ENV === 'production' ? 'none' : 'strict',
+            secure: process.env.NODE_ENV  === 'production',
+            sameSite: 'lax',
             maxAge: 1 * 24 * 60 * 60 * 1000
         });
 
         res.cookie('refreshToken', newRefreshToken, {
             httpOnly: true,
-            secure: NODE_ENV === 'production',
-            sameSite: NODE_ENV === 'production' ? 'none' : 'strict',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
@@ -202,14 +202,14 @@ export const isAuthenticated = async (req, res) => {
         } else {
             res.clearCookie('token', {
                 httpOnly: true, 
-                secure: NODE_ENV === 'production', 
-                sameSite: NODE_ENV === 'production' ? 'none' : 'strict'
+                secure: process.env.NODE_ENV === 'production', 
+                sameSite: 'lax'
             });
     
             res.clearCookie('refreshToken', {
                 httpOnly: true, 
-                secure: NODE_ENV === 'production', 
-                sameSite: NODE_ENV === 'production' ? 'none' : 'strict'
+                secure: process.env.NODE_ENV === 'production', 
+                sameSite: 'lax'
             });
 
             return res.json({success: false, message: 'User not authenticated. Please login again'});
