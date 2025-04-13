@@ -119,7 +119,7 @@ export const sendVerifyOtp = async (req, res) => {
         const deviceHMAC = generateHMAC(userAgent, ip, user._id);
         const deviceData = user.verifiedDevices.get(deviceHMAC);
 
-        if (deviceData.device !== deviceFingerprint && !deviceData.isVerified) {
+        if (!deviceData) {
             if (user.verifyOtp && user.verifyOtpExpiredAt > Date.now()) {
                 return res.json({ success: true, message: 'OTP is still valid. Please check your email' });
             }
