@@ -119,8 +119,7 @@ export const sendVerifyOtp = async (req, res) => {
         const deviceHMAC = generateHMAC(userAgent, ip, user._id);
         const deviceData = user.verifiedDevices.get(deviceHMAC);
 
-        if (!deviceData || (deviceData.device !== deviceFingerprint && !deviceData.isVerified)) {
-
+        if (deviceData.device !== deviceFingerprint && !deviceData.isVerified) {
             if (user.verifyOtp && user.verifyOtpExpiredAt > Date.now()) {
                 return res.json({ success: true, message: 'OTP is still valid. Please check your email' });
             }
@@ -141,7 +140,7 @@ export const sendVerifyOtp = async (req, res) => {
             await transporter.sendMail(mailOptions);
     
             return res.json({success: true, isVerified: false, message: 'Verification code sent to your email'});
-        } else if (deviceData && deviceData.device === deviceFingerprint) {
+        } else if (deviceData.device === deviceFingerprint && deviceData.isVerified) {
             return res.json({success: true, isVerified: true, message: 'Login Successful'});
         } else {
             return res.json({success: false, isVerified: false, message: 'failed to send verification code'});
