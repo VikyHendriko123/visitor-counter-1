@@ -8,7 +8,6 @@ import { EMAIL_VERIFY_TEMPLATE, PASSWORD_RESET_TEMPLATE } from "../config/emailT
 const generateHMAC = (userAgent, userId) => {
     const secretKey = process.env.DEVICE_SECRET;
     const rawString = `${userId}-${userAgent}`;
-    
     return crypto.createHmac('sha256', secretKey).update(rawString).digest('hex');
 };
 
@@ -74,7 +73,7 @@ export const logout = async (req, res) => {
 }
 
 export const refreshAccessToken = async (req, res) => {
-    const { refreshToken } = req.cookies;
+    const { refreshToken } = req.cookies || req.headers.authorization?.split(' ')[1];
 
     if (!refreshToken) {
         return res.status(401).json({ success: false, message: "Access denied. Please log in again." });
@@ -187,7 +186,9 @@ export const verifyEmail = async (req, res) => {
 
 export const isAuthenticated = async (req, res) => {
     try {
-        const {userId} = req.body;
+        const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.id;
         const user = await userModel.findById(userId);
 
         const userAgent = req.headers["user-agent"];
