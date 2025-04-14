@@ -5,9 +5,9 @@ import transporter from "../config/nodemailer.js";
 import crypto from "crypto";
 import { EMAIL_VERIFY_TEMPLATE, PASSWORD_RESET_TEMPLATE } from "../config/emailTemplate.js";
 
-const generateHMAC = (userAgent, ip, userId) => {
+const generateHMAC = (userAgent, userId) => {
     const secretKey = process.env.DEVICE_SECRET;
-    const rawString = `${userId}-${userAgent}-${ip}`;
+    const rawString = `${userId}-${userAgent}`;
     
     return crypto.createHmac('sha256', secretKey).update(rawString).digest('hex');
 };
@@ -115,8 +115,7 @@ export const sendVerifyOtp = async (req, res) => {
         const user = await userModel.findById(userId);
 
         const userAgent = req.headers['user-agent'];
-        const ip = req.ip;
-        const deviceHMAC = generateHMAC(userAgent, ip, user._id);
+        const deviceHMAC = generateHMAC(userAgent, user._id);
         const deviceData = user.verifiedDevices.get(deviceHMAC);
 
         if (!deviceData) {
@@ -172,8 +171,7 @@ export const verifyEmail = async (req, res) => {
         }
 
         const userAgent = req.headers['user-agent'];
-        const ip = req.ip;
-        const deviceHMAC = generateHMAC(userAgent, ip, user._id);
+        const deviceHMAC = generateHMAC(userAgent, user._id);
 
         user.isVerified = true;
         user.verifyOtp = '';
@@ -193,8 +191,7 @@ export const isAuthenticated = async (req, res) => {
         const user = await userModel.findById(userId);
 
         const userAgent = req.headers["user-agent"];
-        const ip = req.ip;
-        const deviceHMAC = generateHMAC(userAgent, ip, userId);
+        const deviceHMAC = generateHMAC(userAgent, userId);
 
         if (user && user.verifiedDevices.get(deviceHMAC) && user.verifiedDevices.get(deviceHMAC).isVerified) {
             return res.json({success: true, message: 'User already authenticated'});
