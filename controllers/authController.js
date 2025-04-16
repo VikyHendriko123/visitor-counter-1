@@ -144,7 +144,26 @@ export const sendVerifyOtp = async (req, res) => {
         } else if (deviceData && deviceData.isVerified) {
             return res.json({success: true, isVerified: true, message: 'Login Successful'});
         } else {
-            return res.json({success: false, isVerified: false, message: 'failed to send verification code'});
+            if (user.verifyOtp && user.verifyOtpExpiredAt > Date.now()) {
+                return res.json({ success: true, isVerified: false, message: 'OTP is still valid. Please check your email' });
+            }
+        
+            const otp = Math.floor(100000 + Math.random() * 900000);
+            user.verifyOtp = otp;
+            user.verifyOtpExpiredAt = Date.now() + 24 * 60 * 60 * 1000;
+        
+            await user.save();
+        
+            const mailOptions = {
+                from: process.env.SENDER_EMAIL,
+                to: user.email,
+                subject: 'Verify your account',
+                html: EMAIL_VERIFY_TEMPLATE.replace("{{otp}}", otp).replace("{{email}}", user.email)
+            }
+        
+            await transporter.sendMail(mailOptions);
+        
+            return res.json({ success: true, isVerified: false, message: 'Verification code sent to your email' });
         }
     } catch (error) {
         return res.json({success: false, message: error.message});
