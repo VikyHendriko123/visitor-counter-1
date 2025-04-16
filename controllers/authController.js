@@ -5,9 +5,9 @@ import transporter from "../config/nodemailer.js";
 import crypto from "crypto";
 import { EMAIL_VERIFY_TEMPLATE, PASSWORD_RESET_TEMPLATE } from "../config/emailTemplate.js";
 
-const generateHMAC = (userAgent, userId) => {
+const generateHMAC = (deviceFingerprint, userId) => {
     const secretKey = process.env.DEVICE_SECRET;
-    const rawString = `${userId}-${userAgent}`;
+    const rawString = `${userId}-${deviceFingerprint}`;
     return crypto.createHmac('sha256', secretKey).update(rawString).digest('hex');
 };
 
@@ -115,9 +115,7 @@ export const sendVerifyOtp = async (req, res) => {
         const {userId, deviceFingerprint} = req.body;
 
         const user = await userModel.findById(userId);
-
-        const userAgent = req.headers['user-agent'];
-        const deviceHMAC = generateHMAC(userAgent, user._id);
+        const deviceHMAC = generateHMAC(deviceFingerprint, user._id);
         const deviceData = user.verifiedDevices.get(deviceHMAC);
 
         if (!deviceData) {
@@ -191,8 +189,7 @@ export const verifyEmail = async (req, res) => {
             return res.json({success: false, message: 'OTP expired'});
         }
 
-        const userAgent = req.headers['user-agent'];
-        const deviceHMAC = generateHMAC(userAgent, user._id);
+        const deviceHMAC = generateHMAC(deviceFingerprint, user._id);
 
         user.isVerified = true;
         user.verifyOtp = '';
@@ -209,14 +206,14 @@ export const verifyEmail = async (req, res) => {
 export const isAuthenticated = async (req, res) => {
     try {
         const { userId } = req.body;
+        const deviceFingerprint = req.headers['device-fingerprint'];
+
         if(!userId) {
             res.status(400).json({success: false, message: "Token is invalid"});
         }
 
         const user = await userModel.findById(userId);
-
-        const userAgent = req.headers["user-agent"];
-        const deviceHMAC = generateHMAC(userAgent, userId);
+        const deviceHMAC = generateHMAC(deviceFingerprint, userId);
 
         if (user && user.verifiedDevices.get(deviceHMAC) && user.verifiedDevices.get(deviceHMAC).isVerified) {
             return res.status(200).json({success: true, message: 'User already authenticated'});
