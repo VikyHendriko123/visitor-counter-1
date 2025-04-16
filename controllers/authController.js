@@ -141,7 +141,7 @@ export const sendVerifyOtp = async (req, res) => {
             await transporter.sendMail(mailOptions);
     
             return res.json({success: true, isVerified: false, message: 'Verification code sent to your email'});
-        } else if (deviceData.device === deviceFingerprint && deviceData.isVerified) {
+        } else if (deviceData && deviceData.isVerified) {
             return res.json({success: true, isVerified: true, message: 'Login Successful'});
         } else {
             return res.json({success: false, isVerified: false, message: 'failed to send verification code'});
