@@ -73,17 +73,20 @@ export const logout = async (req, res) => {
 }
 
 export const refreshAccessToken = async (req, res) => {
-    const { refreshToken } = req.cookies || req.headers.authorization?.split(' ')[1];
+    const refreshToken = req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.split(' ')[1]
+        : req.cookies?.refreshToken;
 
     if (!refreshToken) {
-        return res.status(401).json({ success: false, message: "Access denied. Please log in again." });
+        return res.status(400).json({ success: false, message: 'Not Authorized. Login Again' });
     }
 
     try {
-        const { userId } = req.body;
+        const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+
+        const userId = decoded.id;
         const user = await userModel.findById(userId);
 
-        const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
         const newAccessToken = jwt.sign({id: user._id, email: user.email, username: user.username, location: user.location}, JWT_SECRET, {expiresIn: '1d'});
         const newRefreshToken = jwt.sign({id: decoded.id}, process.env.REFRESH_SECRET, {expiresIn: '7d'});
 
@@ -101,7 +104,7 @@ export const refreshAccessToken = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
-        return res.json({ success: true, message: "Token refreshed successfully", token: newAccessToken });
+        return res.status(200).json({ success: true, message: "Token refreshed successfully" });
     } catch (error) {
         return res.status(401).json({ success: false, message: "Invalid or expired token. Login again." });
     }
@@ -186,16 +189,18 @@ export const verifyEmail = async (req, res) => {
 
 export const isAuthenticated = async (req, res) => {
     try {
-        const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
+        const { userId } = req.body;
+        if(!userId) {
+            res.status(400).json({success: false, message: "Token is invalid"});
+        }
+
         const user = await userModel.findById(userId);
 
         const userAgent = req.headers["user-agent"];
         const deviceHMAC = generateHMAC(userAgent, userId);
 
         if (user && user.verifiedDevices.get(deviceHMAC) && user.verifiedDevices.get(deviceHMAC).isVerified) {
-            return res.json({success: true, message: 'User already authenticated'});
+            return res.status(200).json({success: true, message: 'User already authenticated'});
         } else {
             res.clearCookie('token', {
                 httpOnly: true, 
@@ -209,10 +214,10 @@ export const isAuthenticated = async (req, res) => {
                 sameSite: 'lax'
             });
 
-            return res.json({success: false, message: 'User not authenticated. Please login again'});
+            return res.status(401).json({success: false, message: 'Email has been changed. Please log in again.'});
         }
     } catch (error) {
-        return res.json({success: false, message: error.message});
+        return res.status(401).json({success: false, message: error.message});
     }
 }
 
@@ -297,8 +302,15 @@ export const resetPassword = async (req, res) => {
             return res.json({ success: false, message: 'OTP has expired' });
         }
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 8 characters long, contain at least one uppercase letter and one number.'
+            });
+        }
 
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;
         user.resetOtp = ''; 
         user.resetOtpExpireAt = 0;
