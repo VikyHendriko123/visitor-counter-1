@@ -15,18 +15,18 @@ export const login = async (req, res) => {
     const {email, password} = req.body;
 
     if(!email || !password) {
-        return res.status(400).json({success: false, message: 'Email and password are required'});
+        return res.status(400).json({success: false, message: 'Invalid input data'});
     }
 
     try {
         const user = await userModel.findOne({email});
         if (!user) {
-            return res.status(404).json({success: false, message: 'User not found'});
+            return res.status(404).json({success: false, message: 'Invalid input data'});
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch){
-            return res.status(401).json({success: false, message: 'Incorrect password'});
+            return res.status(401).json({success: false, message: 'Invalid input data'});
         }
 
         const token = jwt.sign({id: user._id, email: user.email, username: user.username, location: user.location}, process.env.JWT_SECRET, {expiresIn: '1d'});
@@ -35,20 +35,20 @@ export const login = async (req, res) => {
         res.cookie('token', token, {
             httpOnly: true, 
             secure: process.env.NODE_ENV === 'production', 
-            sameSite: 'lax',
+            sameSite: 'strict',
             maxAge: 1 * 24 * 60 * 60 * 1000
         });
 
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true, 
             secure: process.env.NODE_ENV === 'production', 
-            sameSite: 'lax',
+            sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
         return res.status(200).json({success: true, message: 'User logged in successfully'});
     } catch (error) {
-        return res.status(500).json({success: false, message: error.message});
+        return res.status(500).json({success: false, message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : error.message});
     }
 }
 
@@ -57,13 +57,13 @@ export const logout = async (req, res) => {
         res.clearCookie('token', {
             httpOnly: true, 
             secure: process.env.NODE_ENV === 'production', 
-            sameSite: 'lax'
+            sameSite: 'strict'
         });
         
         res.clearCookie('refreshToken', {
             httpOnly: true, 
             secure: process.env.NODE_ENV === 'production', 
-            sameSite: 'lax'
+            sameSite: 'strict'
         });
 
         return res.json({success: true, message: 'User logged out successfully'});
@@ -93,14 +93,14 @@ export const refreshAccessToken = async (req, res) => {
         res.cookie('token', newAccessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV  === 'production',
-            sameSite: 'lax',
+            sameSite: 'strict',
             maxAge: 1 * 24 * 60 * 60 * 1000
         });
 
         res.cookie('refreshToken', newRefreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
@@ -172,7 +172,7 @@ export const verifyEmail = async (req, res) => {
     const {userId, otp, deviceFingerprint} = req.body;
         
     if(!userId || !otp || !deviceFingerprint) {
-        return res.status(400).json({success: false, message: 'Missing required fields'});
+        return res.status(400).json({success: false, message: 'Invalid input data'});
     }
 
     try {
@@ -221,19 +221,19 @@ export const isAuthenticated = async (req, res) => {
             res.clearCookie('token', {
                 httpOnly: true, 
                 secure: process.env.NODE_ENV === 'production', 
-                sameSite: 'lax'
+                sameSite: 'strict'
             });
     
             res.clearCookie('refreshToken', {
                 httpOnly: true, 
                 secure: process.env.NODE_ENV === 'production', 
-                sameSite: 'lax'
+                sameSite: 'strict'
             });
 
             return res.status(401).json({success: false, message: 'Email has been changed. Please log in again.'});
         }
     } catch (error) {
-        return res.status(401).json({success: false, message: error.message});
+        return res.status(401).json({success: false, message: 'Not Authorized. Login Again'});
     }
 }
 
@@ -241,7 +241,7 @@ export const sendResetOtp = async (req, res) => {
     const {email} = req.body;
 
     if(!email){
-        return res.status(400).json({success: false, message: 'Email is required'});
+        return res.status(400).json({success: false, message: 'Invalid input data'});
     }
 
     try {
@@ -276,7 +276,7 @@ export const verifyResetOtp = async (req, res) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-        return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+        return res.status(400).json({ success: false, message: 'Invalid input data' });
     }
 
     try {
@@ -304,7 +304,7 @@ export const resetPassword = async (req, res) => {
     const { email, newPassword } = req.body;
 
     if (!email || !newPassword) {
-        return res.status(400).json({ success: false, message: 'Email and new password are required' });
+        return res.status(400).json({ success: false, message: 'Invalid input data' });
     }
 
     try {

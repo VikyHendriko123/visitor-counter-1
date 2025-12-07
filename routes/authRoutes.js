@@ -5,7 +5,7 @@ import userAuth from "../middleware/userAuth.js";
 const authRouter = express.Router();
 
 authRouter.post('/login', login);
-authRouter.post('/logout', logout);
+authRouter.post('/logout', userAuth, logout);
 authRouter.post('/send-verify-otp', userAuth, sendVerifyOtp);
 authRouter.post('/verify-account', userAuth, verifyEmail);
 authRouter.get('/is-auth', userAuth, isAuthenticated);
